@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, Mic } from 'lucide-react';
+import { Send } from 'lucide-react';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
@@ -50,27 +50,12 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled }) => {
               />
             </div>
             
-            <div className="flex items-center gap-1 px-2 py-2">
-              <button
-                type="button"
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200 text-gray-500 hover:text-gray-700"
-                title="Attach file"
-              >
-                <Paperclip className="w-5 h-5" />
-              </button>
-              
-              <button
-                type="button"
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200 text-gray-500 hover:text-gray-700"
-                title="Voice message"
-              >
-                <Mic className="w-5 h-5" />
-              </button>
-              
+            <div className="flex items-center px-2 py-2">
               <button
                 type="submit"
                 disabled={!message.trim() || disabled}
-                className="p-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 ml-1"
+                className="p-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                title="Send message"
               >
                 <Send className="w-5 h-5" />
               </button>

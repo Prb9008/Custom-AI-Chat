@@ -194,20 +194,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout }) => {
       timestamp: new Date(),
     };
 
+    const tempLoadingId = (Date.now() + 1).toString();
     const loadingMessage: ChatMessage = {
-      id: (Date.now() + 1).toString(),
+      id: tempLoadingId,
       content: '',
       role: 'assistant',
       timestamp: new Date(),
       isLoading: true,
     };
 
+    // First, add the user message and loading message
     setSessions(prev => prev.map(session => {
       if (session.id === currentSessionId) {
-        const updatedMessages = [...session.messages, userMessage, loadingMessage];
         return {
           ...session,
-          messages: updatedMessages,
+          messages: [...session.messages, userMessage, loadingMessage],
           updatedAt: new Date(),
         };
       }
@@ -219,41 +220,60 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout }) => {
     try {
       const response = await sendMessageToGemini(content, currentSessionId);
       const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
+        id: Date.now().toString(),
         content: response,
         role: 'assistant',
         timestamp: new Date(),
       };
 
+      // Replace the loading message with the actual response
       setSessions(prev => prev.map(session => {
         if (session.id === currentSessionId) {
-          const messagesWithoutLoading = session.messages.filter(msg => !msg.isLoading);
+          const updatedMessages = session.messages.map(msg => 
+            msg.id === tempLoadingId ? assistantMessage : msg
+          );
           return {
             ...session,
-            messages: [...messagesWithoutLoading, assistantMessage],
+            messages: updatedMessages,
             updatedAt: new Date(),
           };
         }
         return session;
       }));
 
-      // Refresh session list to update title
-      const updatedSessions = await loadChatSessions(user?._id);
-      setSessions(updatedSessions.map(s => s.id === currentSessionId ? { ...s, messages: sessions.find(s => s.id === currentSessionId)?.messages || [] } : s));
+      // Refresh session list to update title if needed
+      try {
+        const updatedSessions = await loadChatSessions(user?._id);
+        setSessions(prev => {
+          const currentMessages = prev.find(s => s.id === currentSessionId)?.messages || [];
+          return updatedSessions.map(s => {
+            if (s.id === currentSessionId) {
+              return { ...s, messages: currentMessages };
+            }
+            return s;
+          });
+        });
+      } catch (error: any) {
+        console.error('Error refreshing session list:', error.message);
+      }
+
     } catch (error: any) {
       const errorMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
+        id: Date.now().toString(),
         content: 'Sorry, I encountered an error while processing your request. Please try again.',
         role: 'assistant',
         timestamp: new Date(),
       };
 
+      // Replace the loading message with the error message
       setSessions(prev => prev.map(session => {
         if (session.id === currentSessionId) {
-          const messagesWithoutLoading = session.messages.filter(msg => !msg.isLoading);
+          const updatedMessages = session.messages.map(msg => 
+            msg.id === tempLoadingId ? errorMessage : msg
+          );
           return {
             ...session,
-            messages: [...messagesWithoutLoading, errorMessage],
+            messages: updatedMessages,
             updatedAt: new Date(),
           };
         }
@@ -298,7 +318,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout }) => {
         />
         
         <div className="flex-1 overflow-y-auto">
-          {currentSession?.messages.length === 0 ? (
+          {!currentSession?.messages || currentSession.messages.length === 0 ? (
             <div className="flex items-center justify-center h-full p-4">
               <div className="text-center max-w-2xl">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-3xl mb-6 shadow-lg">
@@ -315,7 +335,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout }) => {
                     <button
                       key={index}
                       onClick={() => sendMessage(suggestion)}
-                      className="group p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 hover:bg-white hover:shadow-lg hover:border-indigo-200 transition-all duration-300 text-left hover:-translate-y-1"
+                      disabled={isLoading}
+                      className="group p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 hover:bg-white hover:shadow-lg hover:border-indigo-200 transition-all duration-300 text-left hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <div className="flex items-start gap-3">
                         <Sparkles className="w-5 h-5 text-indigo-500 mt-0.5 group-hover:rotate-12 transition-transform duration-300" />
@@ -330,7 +351,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout }) => {
             </div>
           ) : (
             <div className="max-w-4xl mx-auto p-4">
-              {currentSession?.messages.map((message) => (
+              {currentSession.messages.map((message) => (
                 <MessageBubble key={message.id} message={message} />
               ))}
               <div ref={messagesEndRef} />
